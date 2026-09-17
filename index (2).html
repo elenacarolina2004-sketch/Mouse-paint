@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mouse Paint - Nivel 2: ¡A Pintar!</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #e3f2fd, #fce4ec);
+            font-family: 'Comic Sans MS', 'Bubblegum Sans', cursive, sans-serif;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+            min-height: 100vh;
+            overflow-x: hidden;
+            user-select: none;
+        }
+
+        h1 {
+            color: #ff4081;
+            font-size: 2rem;
+            margin: 10px 0 0 0;
+            text-shadow: 2px 2px 4px rgba(0,0,0,0.1);
+        }
+
+        /* Selector de Niveles */
+        .level-tabs {
+            display: flex;
+            gap: 15px;
+            margin: 10px 0;
+        }
+
+        .tab-btn {
+            background-color: #ddd;
+            color: #555;
+            border: none;
+            padding: 8px 16px;
+            font-size: 0.9rem;
+            border-radius: 20px;
+            cursor: pointer;
+            font-weight: bold;
+        }
+
+        .tab-btn.active {
+            background-color: #ff4081;
+            color: white;
+            box-shadow: 0 3px 8px rgba(255,64,129,0.3);
+        }
+
+        /* Contenedor Principal */
+        .game-container {
+            position: relative;
+            width: 850px;
+            max-width: 95vw;
+            background: white;
+            border: 6px dashed #ff80ab;
+            border-radius: 25px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 15px;
+            box-sizing: border-box;
+            margin-bottom: 20px;
+        }
+
+        .screen {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .screen.active {
+            display: flex;
+        }
+
+        /* --- ESTILOS NIVEL 1 --- */
+        .mixing-puddle {
+            width: 300px;
+            height: 130px;
+            background: #f0f0f0;
+            border: 4px dashed #ccc;
+            border-radius: 100px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            transition: background 0.5s ease;
+            box-shadow: inset 0 5px 10px rgba(0,0,0,0.05);
+            margin: 10px 0;
+        }
+
+        .mixing-slots {
+            display: flex;
+            gap: 15px;
+            z-index: 2;
+        }
+
+        .slot {
+            width: 70px;
+            height: 70px;
+            border: 3px dashed rgba(0,0,0,0.15);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .mouse-tray {
+            display: flex;
+            justify-content: center;
+            gap: 30px;
+            background: #fff8e1;
+            padding: 12px 25px;
+            border-radius: 20px;
+            border: 3px solid #ffe082;
+            width: 100%;
+            box-sizing: border-box;
+            margin-top: 15px;
+        }
+
+        .mouse-item {
+            cursor: grab;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            transition: transform 0.2s ease;
+        }
+
+        .mouse-item:hover { transform: scale(1.1); }
+        .mouse-item img { width: 80px; height: auto; pointer-events: none; }
+
+        /* --- ESTILOS NIVEL 2 (CANVAS Y HERRAMIENTAS) --- */
+        .mission-box {
+            background: #e1f5fe;
+            border: 3px solid #81d4fa;
+            padding: 10px 20px;
+            border-radius: 15px;
+            font-size: 1.1rem;
+            color: #0277bd;
+            font-weight: bold;
+            margin-bottom: 10px;
+            text-align: center;
+        }
+
+        .canvas-area {
+            position: relative;
+            width: 450px;
+            height: 350px;
+            background: #fafafa;
+            border: 3px solid #ddd;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            cursor: crosshair;
+            overflow: hidden;
+        }
+
+        /* Capas separadas para pintar por DELANTE de la plantilla */
+        canvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        #drawCanvas {
+            z-index: 1; /* Pintura */
+        }
+
+        #templateCanvas {
+            z-index: 2; /* Imagen plantilla encima */
+            pointer-events: none; /* Permite hacer clic a través de la plantilla hacia el canvas */
+        }
+
+        /* Panel de Herramientas Nivel 2 */
+        .tools-panel {
+            display: flex;
+            gap: 20px;
+            align-items: center;
+            background: #f1f8e9;
+            padding: 10px 20px;
+            border-radius: 20px;
+            border: 3px solid #c8e6c9;
+            margin-top: 15px;
+            flex-wrap: wrap;
+            justify-content: center;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 10px;
+        }
+
+        .color-btn {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: 3px solid white;
+            cursor: pointer;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+            transition: transform 0.2s;
+        }
+
+        .color-btn.active {
+            transform: scale(1.2);
+            border-color: #333;
+        }
+
+        .tool-btn {
+            background: #ffb74d;
+            border: none;
+            padding: 8px 15px;
+            border-radius: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            color: white;
+            font-family: inherit;
+        }
+
+        .tool-btn.active {
+            background: #f57c00;
+        }
+
+        .brush-sizes {
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        .size-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            border: 2px solid #ccc;
+            background: white;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 0.8rem;
+            font-weight: bold;
+        }
+
+        .size-btn.active {
+            background: #8bc34a;
+            color: white;
+            border-color: #689f38;
+        }
+
+        /* Feedback visual */
+        .feedback-msg {
+            font-size: 1.1rem;
+            font-weight: bold;
+            margin-top: 10px;
+            min-height: 25px;
+            text-align: center;
+        }
+
+        button.action-btn {
+            background-color: #ff4081;
+            color: white;
+            border: none;
+            padding: 8px 20px;
+            font-size: 1rem;
+            font-weight: bold;
+            border-radius: 50px;
+            cursor: pointer;
+            box-shadow: 0 4px 10px rgba(255, 64, 129, 0.3);
+            margin-top: 10px;
+            font-family: inherit;
+        }
+
+        button.action-btn:hover { background-color: #f50057; }
+    </style>
+</head>
+<body>
+
+    <h1>Mouse Paint 🎨</h1>
+    
+    <div class="level-tabs">
+        <button class="tab-btn active" onclick="switchLevel(1)">Nivel 1: Mezcla Tarros</button>
+        <button class="tab-btn" onclick="switchLevel(2)">Nivel 2: ¡A Pintar al Ratón!</button>
+    </div>
+
+    <div class="game-container">
+        
+        <!-- ================= NIVEL 1 ================= -->
+        <div class="screen active" id="level1-screen">
+            <p style="color: #666; margin: 5px 0 15px 0;">Arrastra dos ratones al tazón para descubrir la mezcla.</p>
+            
+            <div class="mixing-puddle" id="puddle" ondragover="allowDrop(event)" ondrop="dropToPuddle(event)">
+                <span style="position:absolute; top: 8px; font-size:0.85rem; color:#888;">Tazón Mágico</span>
+                <div class="mixing-slots">
+                    <div class="slot" id="slot1"></div>
+                    <div class="slot" id="slot2"></div>
+                </div>
+            </div>
+
+            <div class="feedback-msg" id="msg-level1">¡Junta dos ratones!</div>
+
+            <div class="mouse-tray">
+                <div class="mouse-item" draggable="true" ondragstart="drag(event, 'yellow')">
+                    <img src="https://i.postimg.cc/BX55807C/Untitled-design-(11).png" alt="Amarillo">
+                    <span style="color:#d4ac0d; font-weight:bold;">Amarillo</span>
+                </div>
+                <div class="mouse-item" draggable="true" ondragstart="drag(event, 'blue')">
+                    <img src="https://i.postimg.cc/ZCPP9Ssc/Untitled-design-(12).png" alt="Azul">
+                    <span style="color:#2980b9; font-weight:bold;">Azul</span>
+                </div>
+                <div class="mouse-item" draggable="true" ondragstart="drag(event, 'red')">
+                    <img src="https://i.postimg.cc/SJLLXh1C/Untitled-design-(13).png" alt="Rojo">
+                    <span style="color:#c0392b; font-weight:bold;">Rojo</span>
+                </div>
+            </div>
+
+            <button class="action-btn" onclick="resetLevel1()" style="margin-top:15px;">Reiniciar Tazón 🔄</button>
+        </div>
+
+        <!-- ================= NIVEL 2 ================= -->
+        <div class="screen" id="level2-screen">
+            <div class="mission-box" id="missionText">Misión: ¡Mezcla Rojo + Azul y pinta el ratón del color correcto!</div>
+
+            <div class="canvas-area" id="canvasArea">
+                <!-- Canvas de dibujo (Por debajo de la plantilla) -->
+                <canvas id="drawCanvas" width="450" height="350"></canvas>
+                <!-- Canvas plantilla del ratón (Por ENCIMA para que los trazos queden limpios dentro) -->
+                <canvas id="templateCanvas" width="450" height="350"></canvas>
+            </div>
+
+            <!-- Herramientas de pintura -->
+            <div class="tools-panel">
+                <div class="color-palette" id="palette">
+                    <div class="color-btn active" style="background: #ba68c8;" onclick="setBrushColor('#ba68c8', 'morado')" title="Morado"></div>
+                    <div class="color-btn" style="background: #81c784;" onclick="setBrushColor('#81c784', 'verde')" title="Verde"></div>
+                    <div class="color-btn" style="background: #ffb74d;" onclick="setBrushColor('#ffb74d', 'naranja')" title="Naranja"></div>
+                    <div class="color-btn" style="background: #e57373;" onclick="setBrushColor('#e57373', 'rojo')" title="Rojo"></div>
+                </div>
+
+                <button class="tool-btn active" id="brushToolBtn" onclick="useBrush()">Pincel 🖌️</button>
+                <button class="tool-btn" id="eraserToolBtn" onclick="useEraser()">Borrador 🧹</button>
+
+                <div class="brush-sizes">
+                    <div class="size-btn" onclick="setBrushSize(10)">S</div>
+                    <div class="size-btn active" onclick="setBrushSize(20)">M</div>
+                    <div class="size-btn" onclick="setBrushSize(35)">L</div>
+                </div>
+            </div>
+
+            <div class="feedback-msg" id="msg-level2">¡Usa el pincel para colorear al ratón!</div>
+
+            <div style="display: flex; gap: 10px;">
+                <button class="action-btn" onclick="clearCanvas()">Limpiar Lienzo 🗑️</button>
+                <button class="action-btn" style="background-color: #4caf50;" onclick="checkMission()">¡Revisar Pintura! ✨</button>
+                <button class="action-btn" style="background-color: #0288d1;" onclick="nextMission()">Siguiente Misión ➡️</button>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        /* --- GESTIÓN DE PESTAÑAS DE NIVEL --- */
+        function switchLevel(lvl) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.querySelectorAll('.screen').forEach(s => s.classList.remove('active'));
+            
+            if(lvl === 1) {
+                document.querySelectorAll('.tab-btn')[0].classList.add('active');
+                document.getElementById('level1-screen').classList.add('active');
+            } else {
+                document.querySelectorAll('.tab-btn')[1].classList.add('active');
+                document.getElementById('level2-screen').classList.add('active');
+                initLevel2();
+            }
+        }
+
+        /* --- LÓGICA NIVEL 1 --- */
+        let currentMice = [];
+
+        function allowDrop(ev) { ev.preventDefault(); }
+        function drag(ev, color) { ev.dataTransfer.setData("text/plain", color); }
+
+        function dropToPuddle(ev) {
+            ev.preventDefault();
+            const color = ev.dataTransfer.getData("text/plain");
+            if (color && currentMice.length < 2) {
+                if (currentMice.includes(color)) {
+                    document.getElementById("msg-level1").innerText = "¡Ya usaste ese color! Elige otro.";
+                    return;
+                }
+                currentMice.push(color);
+                updateSlots();
+                if (currentMice.length === 2) evaluateMix();
+            }
+        }
+
+        function updateSlots() {
+            document.getElementById("slot1").innerHTML = "";
+            document.getElementById("slot2").innerHTML = "";
+            currentMice.forEach((color, index) => {
+                const url = color === 'yellow' ? "https://i.postimg.cc/BX55807C/Untitled-design-(11).png" :
+                            color === 'blue' ? "https://i.postimg.cc/ZCPP9Ssc/Untitled-design-(12).png" : 
+                            "https://i.postimg.cc/SJLLXh1C/Untitled-design-(13).png";
+                document.getElementById(`slot${index + 1}`).innerHTML = `<img src="${url}" style="width: 55px;">`;
+            });
+        }
+
+        function evaluateMix() {
+            const puddle = document.getElementById("puddle");
+            const msg = document.getElementById("msg-level1");
+            const mix = currentMice.sort().join("-");
+
+            if (mix === "blue-yellow") {
+                puddle.style.background = "#81c784";
+                msg.innerText = "🎉 ¡Azul + Amarillo = VERDE!";
+            } else if (mix === "red-yellow") {
+                puddle.style.background = "#ffb74d";
+                msg.innerText = "🎉 ¡Rojo + Amarillo = ORANGE (Naranja)!";
+            } else if (mix === "blue-red") {
+                puddle.style.background = "#ba68c8";
+                msg.innerText = "🎉 ¡Azul + Red = MORADO!";
+            }
+        }
+
+        function resetLevel1() {
+            currentMice = [];
+            document.getElementById("puddle").style.background = "#f0f0f0";
+            document.getElementById("slot1").innerHTML = "";
+            document.getElementById("slot2").innerHTML = "";
+            document.getElementById("msg-level1").innerText = "¡Junta dos ratones!";
+        }
+
+
+        /* --- LÓGICA NIVEL 2 (PINTURA Y MISIONES) --- */
+        let drawCanvas, drawCtx, templateCanvas, templateCtx;
+        let isDrawing = false;
+        let brushColor = "#ba68c8";
+        let colorName = "morado";
+        let brushSize = 20;
+        let isEraser = false;
+
+        const missions = [
+            { text: "Misión: Mezcla Azul + Rojo y pinta el ratón de **MORADO**", target: "morado" },
+            { text: "Misión: Mezcla Amarillo + Azul y pinta el ratón de **VERDE**", target: "verde" },
+            { text: "Misión: Mezcla Rojo + Amarillo y pinta el ratón de **NARANJA**", target: "naranja" }
+        ];
+        let currentMissionIndex = 0;
+
+        function initLevel2() {
+            drawCanvas = document.getElementById("drawCanvas");
+            drawCtx = drawCanvas.getContext("2d");
+            templateCanvas = document.getElementById("templateCanvas");
+            templateCtx = templateCanvas.getContext("2d");
+
+            // Cargar imagen plantilla encima
+            const img = new Image();
+            img.crossOrigin = "anonymous";
+            img.src = "https://i.postimg.cc/vcPr7zMD/Untitled-design-(14).png";
+            img.onload = () => {
+                templateCtx.clearRect(0, 0, templateCanvas.width, templateCanvas.height);
+                // Centrar y escalar la plantilla adecuadamente en el canvas
+                templateCtx.drawImage(img, 50, 25, 350, 300);
+            };
+
+            setupDrawingEvents();
+            updateMissionDisplay();
+        }
+
+        function setupDrawingEvents() {
+            const area = document.getElementById("canvasArea");
+
+            const getPos = (e) => {
+                const rect = drawCanvas.getBoundingClientRect();
+                const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+                const clientY = e.touches ? e.touches[0].clientY : e.clientY;
+                return {
+                    x: clientX - rect.left,
+                    y: clientY - rect.top
+                };
+            };
+
+            const startDraw = (e) => {
+                isDrawing = true;
+                const pos = getPos(e);
+                drawCtx.beginPath();
+                drawCtx.moveTo(pos.x, pos.y);
+            };
+
+            const draw = (e) => {
+                if (!isDrawing) return;
+                const pos = getPos(e);
+                drawCtx.lineWidth = brushSize;
+                drawCtx.lineCap = "round";
+                drawCtx.lineJoin = "round";
+
+                if (isEraser) {
+                    drawCtx.globalCompositeOperation = "destination-out";
+                } else {
+                    drawCtx.globalCompositeOperation = "source-over";
+                    drawCtx.strokeStyle = brushColor;
+                }
+
+                drawCtx.lineTo(pos.x, pos.y);
+                drawCtx.stroke();
+            };
+
+            const stopDraw = () => { isDrawing = false; };
+
+            // Eventos Mouse y Touch para tablets/pantallas táctiles
+            drawCanvas.onmousedown = startDraw;
+            drawCanvas.onmousemove = draw;
+            drawCanvas.onmouseup = stopDraw;
+            drawCanvas.onmouseleave = stopDraw;
+
+            drawCanvas.ontouchstart = startDraw;
+            drawCanvas.ontouchmove = draw;
+            drawCanvas.ontouchend = stopDraw;
+        }
+
+        function setBrushColor(color, name) {
+            brushColor = color;
+            colorName = name;
+            isEraser = false;
+            document.getElementById("brushToolBtn").classList.add("active");
+            document.getElementById("eraserToolBtn").classList.remove("active");
+            
+            document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add("active");
+        }
+
+        function useBrush() {
+            isEraser = false;
+            document.getElementById("brushToolBtn").classList.add("active");
+            document.getElementById("eraserToolBtn").classList.remove("active");
+        }
+
+        function useEraser() {
+            isEraser = true;
+            document.getElementById("eraserToolBtn").classList.add("active");
+            document.getElementById("brushToolBtn").classList.remove("active");
+        }
+
+        function setBrushSize(size) {
+            brushSize = size;
+            document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+            event.target.classList.add("active");
+        }
+
+        function clearCanvas() {
+            drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+            document.getElementById("msg-level2").innerText = "¡Lienzo limpio para volver a empezar!";
+            document.getElementById("msg-level2").style.color = "#333";
+        }
+
+        function updateMissionDisplay() {
+            document.getElementById("missionText").innerHTML = missions[currentMissionIndex].text;
+            clearCanvas();
+        }
+
+        function nextMission() {
+            currentMissionIndex = (currentMissionIndex + 1) % missions.length;
+            updateMissionDisplay();
+        }
+
+        function checkMission() {
+            const currentMission = missions[currentMissionIndex];
+            const msg = document.getElementById("msg-level2");
+
+            // Verificamos si se usó el color correcto analizando si hay trazos activos del color objetivo
+            // Para simplificar y hacerlo amigable a los 5 años, evaluamos si el pincel activo coincide con el color de la misión
+            if (colorName === currentMission.target && !isEraser) {
+                msg.style.color = "#2e7d32";
+                msg.innerText = "🌟 ¡EXCELENTE! ¡Ese es el color correcto para la mezcla! 🐭✨";
+            } else {
+                msg.style.color = "#c62828";
+                msg.innerText = "❌ Ups... Revisa bien la mezcla de colores y vuelve a intentarlo.";
+            }
+        }
+    </script>
+</body>
+</html>
